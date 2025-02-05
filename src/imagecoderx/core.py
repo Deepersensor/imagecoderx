@@ -1,4 +1,5 @@
-from imagecoderx import ocr, llm, algorithms
+from imagecoderx import ocr, llm
+from imagecoderx.algorithms import algorithms
 
 def convert_image_to_code(image_path: str) -> str:
     """
