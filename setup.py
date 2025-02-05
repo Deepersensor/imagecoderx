@@ -7,11 +7,29 @@
     Learn more under: https://pyscaffold.org/
 """
 
-from setuptools import setup
+from setuptools import setup, find_packages
 
 if __name__ == "__main__":
     try:
-        setup(use_scm_version={"version_scheme": "no-guess-dev"})
+        setup(
+            use_scm_version={"version_scheme": "no-guess-dev"},
+            name="imagecoderx",
+            version="0.1.0",
+            description="Convert images to accurate code using Tesseract and Ollama",
+            author="Your Name",
+            author_email="your.email@example.com",
+            packages=find_packages(where="src"),
+            package_dir={"": "src"},
+            install_requires=[
+                'pytesseract',
+                # Add other dependencies here
+            ],
+            entry_points={
+                'console_scripts': [
+                    'imagecoderx=imagecoderx.core:main',  # if you want a CLI
+                ],
+            },
+        )
     except:  # noqa
         print(
             "\n\nAn error occurred while building the project, "
