@@ -8,8 +8,8 @@ def convert_image_to_code(image_path: str, output_format: str) -> str:
     """
     Converts an image to code accurately using Tesseract, Ollama, and custom algorithms.
     """
-    text = ocr.extract_text_from_image(image_path)
-    refined_code = llm.process_text_with_llm(text, output_format)
+    text, boxes = ocr.extract_text_from_image(image_path)
+    refined_code = llm.process_text_with_llm(image_path, text, boxes, output_format)
     return algorithms.apply_custom_algorithms(refined_code, output_format)
 
 def main():
