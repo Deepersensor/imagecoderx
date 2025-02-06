@@ -167,7 +167,14 @@ def convert_image_to_code(image_path: str, output_format: str) -> str:
 
     # Merge partial HTML
     final_combined_html = combine_html_sections(partial_html_list, element_positions)
-    return final_combined_html
+
+    # Send the merged HTML to the LLM for one more round of improvements
+    improved_html = llm.process_final_html(final_combined_html)
+
+    # Optionally apply custom formatting again
+    improved_html = algorithms.apply_custom_algorithms(improved_html, output_format)
+
+    return improved_html
 
 def detect_objects_and_remove_background(image_path: str, output_dir: str):
     """

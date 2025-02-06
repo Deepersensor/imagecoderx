@@ -30,8 +30,12 @@ def combine_html_sections(section_html_list, element_positions):
         # Create a div for the section
         section_div = soup.new_tag("div", attrs={
             "class": "element-section",
-            "style": f"left:{pos_info['relative_x']*100}%; top:{pos_info['relative_y']*100}%;"
-                     f"width:{pos_info['width']}px; height:{pos_info['height']}px;"
+            "style": (
+                f"left:{pos_info['relative_x']*100}%; "
+                f"top:{pos_info['relative_y']*100}%; "
+                f"width:{pos_info['width']*100}%; "
+                f"height:{pos_info['height']*100}%;"
+            )
         })
 
         if pos_info.get("type") == "code":

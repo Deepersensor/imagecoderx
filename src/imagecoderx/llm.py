@@ -54,3 +54,32 @@ def process_text_with_llm(image_path: str, text: str, boxes: list[dict], output_
     except Exception as e:
         print(f"Error during Ollama processing: {e}")
         return f"Ollama processing failed: {str(e)}"
+
+def process_final_html(html_code: str) -> str:
+    """
+    Sends the final HTML code to the LLM with a finetuner prompt, extracts the improved code block,
+    and returns the improved code only.
+    """
+    finetuner_prompt = "improve this code and make it better, accurate, error free and return the improved code and nothing else"
+    try:
+        response = chat(
+            model="llama3.2",
+            messages=[{
+                "role": "user",
+                "content": f"{finetuner_prompt}: {html_code}"
+            }]
+        )
+        content = response.message.content
+        code_blocks = re.findall(r"```(.*?)```", content, re.DOTALL)
+        if code_blocks:
+            code = code_blocks[0].strip()
+            # Remove any language label if present
+            code_lines = code.split('\n')
+            if len(code_lines) > 0 and len(code_lines[0].split()) == 1:
+                code = '\n'.join(code_lines[1:]).strip()
+            return code
+        else:
+            return content
+    except Exception as e:
+        print(f"Error during final LLM refinement: {e}")
+        return html_code
