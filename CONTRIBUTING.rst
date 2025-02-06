@@ -10,6 +10,8 @@
    might use GitHub specific terminology (e.g., *Pull Request* instead of *Merge
    Request*).
 
+
+
    Please make sure to check the document having these assumptions in mind
    and update things accordingly.
 
