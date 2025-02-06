@@ -147,6 +147,8 @@ def convert_image_to_code(image_path: str, output_format: str) -> str:
             "type": "code",
             "relative_x": x,
             "relative_y": y,
+            "width": w,
+            "height": h,
             "filename": None,
         })
 
