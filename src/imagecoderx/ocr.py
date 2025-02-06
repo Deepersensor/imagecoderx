@@ -1,4 +1,3 @@
-from PIL import Image
 import subprocess
 
 def extract_text_from_image(image_path: str) -> str:
