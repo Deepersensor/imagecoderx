@@ -95,9 +95,39 @@ def analyze_element_type(section_path: str) -> str:
     This function can be refined for multi-step analysis or further OCR checks.
     """
     # If there's significant text, consider it 'code'
-    # If shape or small area, consider 'logo'
+    # If shape or small area, consider it 'logo'
     # Otherwise default to 'background'
     return "code"  # Placeholder
+
+def get_predominant_color(image_path: str) -> str:
+    """
+    Detects the predominant background color of the image.
+    """
+    img = cv2.imread(image_path)
+    if img is None:
+        print(f"Error: Could not read image at {image_path}")
+        return "#FFFFFF"  # Default white color
+
+    # Resize the image to reduce computation
+    resized_img = cv2.resize(img, (100, 100), interpolation=cv2.INTER_AREA)
+
+    # Reshape the image to be a list of pixels
+    pixels = resized_img.reshape((-1, 3))
+
+    # Convert to np.float32
+    pixels = np.float32(pixels)
+
+    # Define criteria and apply kmeans()
+    criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 10, 1.0)
+    K = 1  # Number of clusters
+    _, labels, centers = cv2.kmeans(pixels, K, None, criteria, 10, cv2.KMEANS_RANDOM_CENTERS)
+
+    # Get the predominant color
+    predominant_color = centers[0].astype(np.uint8)
+
+    # Convert BGR to hex
+    hex_color = '#{:02x}{:02x}{:02x}'.format(int(predominant_color[2]), int(predominant_color[1]), int(predominant_color[0]))
+    return hex_color
 
 def convert_image_to_code(image_path: str, output_format: str) -> str:
     """
@@ -110,16 +140,19 @@ def convert_image_to_code(image_path: str, output_format: str) -> str:
     img = cv2.imread(image_path)
     image_height, image_width = img.shape[:2]
 
+    # Get the predominant background color
+    bg_color = get_predominant_color(image_path)
+
     # Initialize HTML structure
-    html_content = """<!DOCTYPE html>
+    html_content = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Generated Code</title>
     <style>
-        body { margin: 0; }
-        .region { position: absolute; }
+        body {{ margin: 0; background-color: {bg_color}; }}
+        .region {{ position: absolute; }}
     </style>
 </head>
 <body>"""
