@@ -23,7 +23,8 @@ if __name__ == "__main__":
             install_requires=[
                 'ollama',
                 'opencv-python',
-                
+                'beautifulsoup4'
+
                 # Add other dependencies here
             ],
             entry_points={
