@@ -9,6 +9,14 @@ from imagecoderx.algorithms import algorithms
 from imagecoderx.config import load_config
 from imagecoderx.engine.html_orchestrator import combine_html_sections
 
+def fix_html_tags(html_content: str) -> str:
+    """
+    Corrects HTML tag formats in the given HTML content.
+    """
+    # Replace all instances of &lt; with < and &gt; with >
+    html_content = html_content.replace("&lt;", "<").replace("&gt;", ">")
+    return html_content
+
 def detect_text_regions(image_path: str) -> list[tuple[float, float, float, float]]:
     """
     Detects regions likely to contain text in the image using OpenCV.
@@ -173,6 +181,9 @@ def convert_image_to_code(image_path: str, output_format: str) -> str:
 
     # Optionally apply custom formatting again
     improved_html = algorithms.apply_custom_algorithms(improved_html, output_format)
+
+    # Correct HTML tag formats
+    improved_html = fix_html_tags(improved_html)
 
     return improved_html
 
