@@ -7,6 +7,7 @@ from bs4 import BeautifulSoup
 from imagecoderx import ocr, llm
 from imagecoderx.algorithms import algorithms
 from imagecoderx.config import load_config
+from imagecoderx.engine.html_orchestrator import combine_html_sections
 
 def detect_text_regions(image_path: str) -> list[tuple[float, float, float, float]]:
     """
@@ -80,6 +81,16 @@ def analyze_background(image_path: str) -> str:
     else:
         return "background"
 
+def analyze_element_type(section_path: str) -> str:
+    """
+    Use rembg result or additional logic to determine if the element is a logo, background, or code.
+    This function can be refined for multi-step analysis or further OCR checks.
+    """
+    # If there's significant text, consider it 'code'
+    # If shape or small area, consider 'logo'
+    # Otherwise default to 'background'
+    return "code"  # Placeholder
+
 def convert_image_to_code(image_path: str, output_format: str) -> str:
     """
     Converts an image to code accurately using Tesseract, Ollama, and custom algorithms.
@@ -107,6 +118,10 @@ def convert_image_to_code(image_path: str, output_format: str) -> str:
     body_content = ""
     style_content = ""
 
+    # Enhanced approach: store partial HTML segments & data in lists
+    partial_html_list = []
+    element_positions = []
+
     for i, (x, y, w, h) in enumerate(text_regions):
         # Calculate absolute coordinates
         x1 = int(x * image_width)
@@ -127,6 +142,14 @@ def convert_image_to_code(image_path: str, output_format: str) -> str:
         # Get code from LLM
         refined_code = llm.process_text_with_llm(image_path, text, boxes, output_format, [(x, y, w, h)])
 
+        partial_html_list.append(refined_code)
+        element_positions.append({
+            "type": "code",
+            "relative_x": x,
+            "relative_y": y,
+            "filename": None,
+        })
+
         # Extract body and style from the code
         soup = BeautifulSoup(refined_code, 'html.parser')
         body = soup.find('body')
@@ -140,16 +163,9 @@ def convert_image_to_code(image_path: str, output_format: str) -> str:
         # Remove the temporary file
         os.remove(temp_file)
 
-    # Combine the HTML structure
-    html_content += f"""
-    <style>
-        {style_content}
-    </style>
-    {body_content}
-</body>
-</html>"""
-
-    return html_content
+    # Merge partial HTML
+    final_combined_html = combine_html_sections(partial_html_list, element_positions)
+    return final_combined_html
 
 def detect_objects_and_remove_background(image_path: str, output_dir: str):
     """
@@ -223,6 +239,11 @@ def detect_objects_and_remove_background(image_path: str, output_dir: str):
         background_roi = cv2.bitwise_not(region_roi)
         background_file = os.path.join(output_dir, f"region_{i}_b.png")
         cv2.imwrite(background_file, background_roi)
+
+        # After background removal, re-analyze the element
+        # For instance, checking the background_file or output_file
+        element_type = analyze_element_type(output_file)
+        # Possibly re-split or further process if needed
 
         # Remove the temporary file
         os.remove(temp_file)
