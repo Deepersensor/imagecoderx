@@ -4,13 +4,13 @@ from imagecoderx import ocr, llm
 from imagecoderx.algorithms import algorithms
 from imagecoderx.config import load_config
 
-def convert_image_to_code(image_path: str) -> str:
+def convert_image_to_code(image_path: str, output_format: str) -> str:
     """
     Converts an image to code accurately using Tesseract, Ollama, and custom algorithms.
     """
     text = ocr.extract_text_from_image(image_path)
     refined_code = llm.process_text_with_llm(text)
-    return algorithms.apply_custom_algorithms(refined_code)
+    return algorithms.apply_custom_algorithms(refined_code, output_format)
 
 def main():
     config = load_config()  # Load or create ~/.imagecoderx.json
@@ -45,7 +45,7 @@ def main():
         base, _ = os.path.splitext(image_path)
         output_path = base + f".{output_format}"
 
-    code = convert_image_to_code(image_path)
+    code = convert_image_to_code(image_path, output_format)
     # Write the code to a single file
     try:
         with open(output_path, "w", encoding="utf-8") as f:
