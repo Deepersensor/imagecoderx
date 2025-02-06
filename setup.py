@@ -21,7 +21,9 @@ if __name__ == "__main__":
             packages=find_packages(where="src"),
             package_dir={"": "src"},
             install_requires=[
-                'pytesseract',
+                'ollama',
+                'opencv-python',
+                
                 # Add other dependencies here
             ],
             entry_points={
