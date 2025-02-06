@@ -7,12 +7,56 @@ from imagecoderx import ocr, llm
 from imagecoderx.algorithms import algorithms
 from imagecoderx.config import load_config
 
+def detect_text_regions(image_path: str) -> list[tuple[float, float, float, float]]:
+    """
+    Detects regions likely to contain text in the image using OpenCV.
+    Returns a list of tuples, each containing the relative (x, y, width, height) of a text region.
+    """
+    img = cv2.imread(image_path)
+    if img is None:
+        print(f"Error: Could not read image at {image_path}")
+        return []
+
+    # Convert the image to grayscale
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+
+    # Apply adaptive thresholding to identify text regions
+    thresh = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 11, 2)
+
+    # Dilate the thresholded image to merge nearby text regions
+    kernel = np.ones((5, 5), np.uint8)
+    dilated = cv2.dilate(thresh, kernel, iterations=2)
+
+    # Find contours
+    contours, _ = cv2.findContours(dilated, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+    image_height, image_width = img.shape[:2]
+    text_regions = []
+
+    for contour in contours:
+        # Get the bounding box for the contour
+        x, y, w, h = cv2.boundingRect(contour)
+
+        # Filter contours based on aspect ratio and size to identify text regions
+        aspect_ratio = float(w) / h
+        if 1 < aspect_ratio < 10 and w > 20 and h > 10:
+            # Calculate relative positions
+            relative_x = x / image_width
+            relative_y = y / image_height
+            relative_width = w / image_width
+            relative_height = h / image_height
+
+            text_regions.append((relative_x, relative_y, relative_width, relative_height))
+
+    return text_regions
+
 def convert_image_to_code(image_path: str, output_format: str) -> str:
     """
     Converts an image to code accurately using Tesseract, Ollama, and custom algorithms.
     """
+    text_regions = detect_text_regions(image_path)
     text, boxes = ocr.extract_text_from_image(image_path)
-    refined_code = llm.process_text_with_llm(image_path, text, boxes, output_format)
+    refined_code = llm.process_text_with_llm(image_path, text, boxes, output_format, text_regions)
     return algorithms.apply_custom_algorithms(refined_code, output_format)
 
 def detect_objects_and_remove_background(image_path: str, output_dir: str):
