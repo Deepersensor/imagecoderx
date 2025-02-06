@@ -1,7 +1,11 @@
 def apply_custom_algorithms(code, output_format="html"):
     """Applies custom algorithms and formats the code based on the output format."""
     if output_format == "html":
-        formatted_code = f"""<!DOCTYPE html>
+        # Check if the code already contains HTML tags
+        if "<html" in code.lower() and "<body" in code.lower():
+            formatted_code = code
+        else:
+            formatted_code = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
