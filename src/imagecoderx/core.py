@@ -3,6 +3,7 @@ import os
 import subprocess
 import cv2
 import numpy as np
+from bs4 import BeautifulSoup
 from imagecoderx import ocr, llm
 from imagecoderx.algorithms import algorithms
 from imagecoderx.config import load_config
@@ -50,14 +51,105 @@ def detect_text_regions(image_path: str) -> list[tuple[float, float, float, floa
 
     return text_regions
 
+def analyze_background(image_path: str) -> str:
+    """
+    Analyzes the background of an image to determine its type (background, logo, button, etc.).
+    """
+    img = cv2.imread(image_path)
+    if img is None:
+        print(f"Error: Could not read image at {image_path}")
+        return "unknown"
+
+    # Convert the image to grayscale
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+
+    # Calculate the average color of the background
+    average_color = np.mean(gray)
+
+    # Analyze the shape of the object
+    contours, _ = cv2.findContours(gray, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    if contours:
+        # Approximate the contour with a simpler shape
+        approx = cv2.approxPolyDP(contours[0], 0.01 * cv2.arcLength(contours[0], True), True)
+        num_vertices = len(approx)
+
+        if num_vertices <= 4:
+            return "background"
+        else:
+            return "logo"
+    else:
+        return "background"
+
 def convert_image_to_code(image_path: str, output_format: str) -> str:
     """
     Converts an image to code accurately using Tesseract, Ollama, and custom algorithms.
     """
+    # Detect text regions
     text_regions = detect_text_regions(image_path)
-    text, boxes = ocr.extract_text_from_image(image_path)
-    refined_code = llm.process_text_with_llm(image_path, text, boxes, output_format, text_regions)
-    return algorithms.apply_custom_algorithms(refined_code, output_format)
+
+    # Load the image
+    img = cv2.imread(image_path)
+    image_height, image_width = img.shape[:2]
+
+    # Initialize HTML structure
+    html_content = """<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generated Code</title>
+    <style>
+        body { margin: 0; }
+        .region { position: absolute; }
+    </style>
+</head>
+<body>"""
+    body_content = ""
+    style_content = ""
+
+    for i, (x, y, w, h) in enumerate(text_regions):
+        # Calculate absolute coordinates
+        x1 = int(x * image_width)
+        y1 = int(y * image_height)
+        x2 = int((x + w) * image_width)
+        y2 = int((y + h) * image_height)
+
+        # Crop the region from the image
+        region_roi = img[y1:y2, x1:x2]
+
+        # Save the region to a temporary file
+        temp_file = os.path.join(os.path.dirname(image_path), f"temp_region_{i}.png")
+        cv2.imwrite(temp_file, region_roi)
+
+        # Extract text from the region
+        text, boxes = ocr.extract_text_from_image(temp_file)
+
+        # Get code from LLM
+        refined_code = llm.process_text_with_llm(image_path, text, boxes, output_format, [(x, y, w, h)])
+
+        # Extract body and style from the code
+        soup = BeautifulSoup(refined_code, 'html.parser')
+        body = soup.find('body')
+        style = soup.find('style')
+
+        if body:
+            body_content += str(body.contents[0]) if body.contents else ""
+        if style:
+            style_content += str(style.contents[0]) if style.contents else ""
+
+        # Remove the temporary file
+        os.remove(temp_file)
+
+    # Combine the HTML structure
+    html_content += f"""
+    <style>
+        {style_content}
+    </style>
+    {body_content}
+</body>
+</html>"""
+
+    return html_content
 
 def detect_objects_and_remove_background(image_path: str, output_dir: str):
     """
