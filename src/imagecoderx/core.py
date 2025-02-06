@@ -8,6 +8,7 @@ from imagecoderx import ocr, llm
 from imagecoderx.algorithms import algorithms
 from imagecoderx.config import load_config
 from imagecoderx.engine.html_orchestrator import combine_html_sections
+from imagecoderx.algorithms import color_analysis
 
 def fix_html_tags(html_content: str) -> str:
     """
@@ -140,8 +141,9 @@ def convert_image_to_code(image_path: str, output_format: str) -> str:
     img = cv2.imread(image_path)
     image_height, image_width = img.shape[:2]
 
-    # Get the predominant background color
-    bg_color = get_predominant_color(image_path)
+    # Get the background style
+    bg_style = color_analysis.detect_background_style(image_path)
+    bg_css = color_analysis.generate_background_css(bg_style)
 
     # Initialize HTML structure
     html_content = f"""<!DOCTYPE html>
@@ -151,7 +153,11 @@ def convert_image_to_code(image_path: str, output_format: str) -> str:
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Generated Code</title>
     <style>
-        body {{ margin: 0; background-color: {bg_color}; }}
+        body {{ 
+            margin: 0;
+            min-height: 100vh;
+            {bg_css}
+        }}
         .region {{ position: absolute; }}
     </style>
 </head>
