@@ -2,6 +2,7 @@ import sys
 import os
 import subprocess
 import cv2
+import numpy as np
 from imagecoderx import ocr, llm
 from imagecoderx.algorithms import algorithms
 from imagecoderx.config import load_config
@@ -16,8 +17,8 @@ def convert_image_to_code(image_path: str, output_format: str) -> str:
 
 def detect_objects_and_remove_background(image_path: str, output_dir: str):
     """
-    Detects objects in the image using OpenCV, removes their backgrounds using rembg,
-    and saves the results to the specified output directory.
+    Divides the image into broader regions that look similar to each other using OpenCV,
+    removes their backgrounds using rembg, saves the results, and records their relative positions.
     """
     # Load the image
     img = cv2.imread(image_path)
@@ -28,35 +29,49 @@ def detect_objects_and_remove_background(image_path: str, output_dir: str):
     # Convert the image to grayscale
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
-    # Use a simple threshold to identify objects (you may need to adjust this)
-    _, thresh = cv2.threshold(gray, 127, 255, cv2.THRESH_BINARY_INV)
+    # Use adaptive thresholding to identify regions
+    thresh = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 11, 2)
+
+    # Dilate the thresholded image to merge nearby regions
+    kernel = np.ones((50, 50), np.uint8)  # Increased kernel size for broader regions
+    dilated = cv2.dilate(thresh, kernel, iterations=1)
 
     # Find contours
-    contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    contours, _ = cv2.findContours(dilated, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
     # Create the output directory if it doesn't exist
     os.makedirs(output_dir, exist_ok=True)
+
+    image_height, image_width, _ = img.shape
 
     for i, contour in enumerate(contours):
         # Get the bounding box for the contour
         x, y, w, h = cv2.boundingRect(contour)
 
         # Enlarge and adjust the bounding box slightly
-        padding = 10
+        padding = 50  # Increased padding for broader regions
         x1 = max(0, x - padding)
         y1 = max(0, y - padding)
         x2 = min(img.shape[1], x + w + padding)
         y2 = min(img.shape[0], y + h + padding)
 
-        # Crop the object from the image
-        object_roi = img[y1:y2, x1:x2]
+        # Calculate relative positions
+        relative_x = x1 / image_width
+        relative_y = y1 / image_height
+        relative_width = (x2 - x1) / image_width
+        relative_height = (y2 - y1) / image_height
 
-        # Save the object to a temporary file
-        temp_file = os.path.join(output_dir, f"temp_object_{i}.png")
-        cv2.imwrite(temp_file, object_roi)
+        print(f"Region {i} Position: x={relative_x:.2f}, y={relative_y:.2f}, width={relative_width:.2f}, height={relative_height:.2f}")
+
+        # Crop the region from the image
+        region_roi = img[y1:y2, x1:x2]
+
+        # Save the region to a temporary file
+        temp_file = os.path.join(output_dir, f"temp_region_{i}.png")
+        cv2.imwrite(temp_file, region_roi)
 
         # Use rembg CLI to remove the background
-        output_file = os.path.join(output_dir, f"object_{i}_no_bg.png")
+        output_file = os.path.join(output_dir, f"region_{i}_no_bg.png")
         try:
             subprocess.run(
                 ["rembg", "i", temp_file, output_file],
@@ -64,9 +79,14 @@ def detect_objects_and_remove_background(image_path: str, output_dir: str):
                 capture_output=True,
                 text=True
             )
-            print(f"Background removed for object {i} and saved to {output_file}")
+            print(f"Background removed for region {i} and saved to {output_file}")
         except subprocess.CalledProcessError as e:
-            print(f"Error removing background for object {i}: {e.stderr}")
+            print(f"Error removing background for region {i}: {e.stderr}")
+
+        # Save the background (inverted region)
+        background_roi = cv2.bitwise_not(region_roi)
+        background_file = os.path.join(output_dir, f"region_{i}_b.png")
+        cv2.imwrite(background_file, background_roi)
 
         # Remove the temporary file
         os.remove(temp_file)
