@@ -29,6 +29,10 @@ def main():
         idx = args.index("--path")
         if idx + 1 < len(args):
             output_path = args[idx + 1]
+            # Check if output_path is a directory
+            if os.path.isdir(output_path):
+                base_name = os.path.splitext(os.path.basename(image_path))[0]
+                output_path = os.path.join(output_path, f"{base_name}.{output_format}")
     if "--out" in args:
         idx = args.index("--out")
         if idx + 1 < len(args):

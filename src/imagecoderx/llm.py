@@ -1,13 +1,17 @@
 from ollama import chat
 from ollama import ChatResponse
+from imagecoderx.config import load_config
 
 def process_text_with_llm(text: str) -> str:
     """Processes text with an LLM (Ollama)."""
+    config = load_config()
+    ollama_model = config.get("ollama_model", "llama3.2")
+    image_interpretation_prompt = config.get("image_interpretation_prompt", "Refine the following code/text...")
     try:
-        response: ChatResponse = chat(model='llama3.2', messages=[
+        response: ChatResponse = chat(model=ollama_model, messages=[
             {
                 'role': 'user',
-                'content': f'Refine the following code/text to be accurate and functional: {text}',
+                'content': f'{image_interpretation_prompt}: {text}',
             },
         ])
         return response.message.content
